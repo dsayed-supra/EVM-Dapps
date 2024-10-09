@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web3 Faucet and Balance Checker</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        h2 {
+            text-align: center;
+            color: #007bff;
+        }
+
+        label {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        input[type="text"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 15px;
+            cursor: pointer;
+            margin: 5px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        p,
+        h3 {
+            margin: 15px 0;
+        }
+
+        pre {
+            background-color: #eaeaea;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
+            overflow: auto;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .network-header {
+            text-align: center;
+            font-size: 1.2em;
+            color: #ff0000;
+            /* Change color for emphasis */
+            margin-bottom: 20px;
+        }
+
+        .chain-id {
+            font-weight: normal;
+            color: #333;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/web3/dist/web3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <div id="networkHeader" class="network-header"></div>
+
+        <span id="chainIdDisplay" class="chain-id"></span> <!-- Chain ID Display -->
+
+        <br><br><br>
+        <label for="walletAddress">Wallet Address:(Eg.: 0x903Af73d97a377F70A003AEdF6706089Da032537)</label>
+        <input type="text" id="walletAddress" placeholder="Enter wallet address">
+        <p>Balance: <span id="balanceDisplay">0 Ether</span></p>
+
+        <button id="faucetButton"><i class="fas fa-water"></i> Request Faucet</button>
+
+        <button id="balanceButton"><i class="fas fa-wallet"></i> Check Balance</button>
+
+        <p>Faucet Transaction Hash: <span id="faucetTxHash">None</span></p>
+
+        <label for="txHash">Transaction Hash:</label>
+        <input type="text" id="txHash" placeholder="Enter transaction hash">
+
+        <button id="receiptButton"><i class="fas fa-receipt"></i> Get Transaction Receipt</button>
+        <button id="transactionButton"><i class="fas fa-info-circle"></i> Get Transaction Details</button>
+
+        <h3>Transaction Receipt</h3>
+        <pre id="transactionReceipt"></pre>
+
+        <h3>Transaction Details</h3>
+        <pre id="transactionDetails"></pre>
+    </div>
+
+    <script>
+
+        const rpcUrl = "https://rpc-evmstaging.supra.com/rpc/v1/eth";
+        const web3 = new Web3(rpcUrl);
+
+        function setNetworkHeader() {
+            const networkHeader = document.getElementById('networkHeader');
+            if (rpcUrl === "http://localhost:27000/rpc/v1/eth") {
+                networkHeader.innerText = "LOCAL SUPRA EVM";
+            } else if (rpcUrl === "https://rpc-evmstaging.supra.com/rpc/v1/eth") {
+                networkHeader.innerText = "EVM STAGING NET";
+            } else if (rpcUrl === "https://sepolia.infura.io/v3/3cc83f977c25400a9f9b97522676f7ea") {
+                networkHeader.innerText = "SEPOLIA TESTNET";
+            } else {
+                networkHeader.innerText = "UNKNOWN NETWORK";
+            }
+        }
+
+        setNetworkHeader();
+
+        async function getFaucet(fromAddress) {
+            const url = `https://rpc-evmstaging.supra.com/rpc/v1/wallet/evm_faucet/${fromAddress}`;
+            
+            try {
+                const response = await axios.get(url);
+                const txHash = "0x" + response.data.Accepted;
+                document.getElementById('faucetTxHash').innerText = txHash;
+            } catch (error) {
+                console.error('Error making faucet request:', error);
+                alert('Faucet request failed');
+            }
+        }
+
+        async function getBalance(fromAddress) {
+            try {
+                const balanceWei = await web3.eth.getBalance(fromAddress);
+                const balanceEther = web3.utils.fromWei(balanceWei, 'ether');
+                document.getElementById('balanceDisplay').innerText = balanceEther + ' Ether';
+            } catch (error) {
+                console.error('An error occurred:', error);
+                alert('Failed to retrieve balance');
+            }
+        }
+        async function getChainId() {
+            try {
+                const chainId = await web3.eth.getChainId();
+                if (chainId) {
+                    document.getElementById('chainIdDisplay').innerText = `Chain ID: ${chainId}`;
+                } else {
+                    throw new Error("ChainID not retrieved");
+                }
+            } catch (error) {
+                console.error('An error occurred while fetching Chain ID:', error);
+                document.getElementById('chainIdDisplay').innerText = "Network is down";
+                alert('Network is down, please check your connection or RPC URL.');
+
+                // Optional: Disable functionality when network is down
+                document.getElementById('faucetButton').disabled = true;
+                document.getElementById('balanceButton').disabled = true;
+                document.getElementById('receiptButton').disabled = true;
+                document.getElementById('transactionButton').disabled = true;
+            }
+        }
+
+
+        async function getTxReceipt(txHash) {
+            try {
+                const receipt = await web3.eth.getTransactionReceipt(txHash);
+                document.getElementById('transactionReceipt').innerText = stringifyBigInt(receipt);
+            } catch (error) {
+                console.error('Error fetching transaction receipt:', error);
+                alert('Failed to retrieve transaction receipt');
+            }
+        }
+
+        async function getTxHash(txHash) {
+            try {
+                const transaction = await web3.eth.getTransaction(txHash);
+                document.getElementById('transactionDetails').innerText = stringifyBigInt(transaction);
+            } catch (error) {
+                console.error('Error fetching transaction details:', error);
+                alert('Failed to retrieve transaction details');
+            }
+        }
+
+        function stringifyBigInt(obj) {
+            return JSON.stringify(obj, (key, value) =>
+                typeof value === 'bigint' ? value.toString() : value, 2);
+        }
+
+        document.getElementById('faucetButton').addEventListener('click', function () {
+            const walletAddress = document.getElementById('walletAddress').value;
+            if (web3.utils.isAddress(walletAddress)) {
+                getFaucet(walletAddress);
+            } else {
+                alert('Invalid wallet address');
+            }
+        });
+
+        document.getElementById('balanceButton').addEventListener('click', function () {
+            const walletAddress = document.getElementById('walletAddress').value;
+            if (web3.utils.isAddress(walletAddress)) {
+                getBalance(walletAddress);
+            } else {
+                alert('Invalid wallet address');
+            }
+        });
+
+        document.getElementById('receiptButton').addEventListener('click', function () {
+            const txHash = document.getElementById('txHash').value;
+            if (txHash) {
+                getTxReceipt(txHash);
+            } else {
+                alert('Invalid transaction hash');
+            }
+        });
+
+        document.getElementById('transactionButton').addEventListener('click', function () {
+            const txHash = document.getElementById('txHash').value;
+            if (txHash) {
+                getTxHash(txHash);
+            } else {
+                alert('Invalid transaction hash');
+            }
+        });
+
+        getChainId();
+    </script>
+</body>
+
+</html>

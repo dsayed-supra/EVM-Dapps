@@ -1,0 +1,7 @@
+.idea
+build/
+*sui.log*
+*Move.lock
+broadcast/
+*.aptos
+
