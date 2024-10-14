@@ -20,10 +20,8 @@ async function main() {
 
   console.log("Deploying contract...");
 
-  // Deploy the contract
   const contract = await contractFactory.deploy();
 
-  // Wait for the transaction to be mined
   await contract.waitForDeployment()
 
   console.log("Contract deployed at:", contract.target);
